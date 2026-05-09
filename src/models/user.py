@@ -14,8 +14,8 @@ class UserOrm(Base):
 
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    is_active: Mapped[bool] = mapped_column(default=True)
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=True)
     activation_key: Mapped[Optional[str]] = mapped_column(unique=True, nullable=True)
     activation_key_expires: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=True)
     updated_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)

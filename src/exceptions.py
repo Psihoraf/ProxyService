@@ -18,3 +18,63 @@ def check_password_validate(password:str):
                                                     "нижнего регистра, иметь хотя бы одну цифру, "
                                                     "а также один или более из специальных "
                                                     "символов(@$!%*#?&_)")
+
+
+
+class ProxyServiceExceptions(Exception):
+
+    detail = "Очень неожиданная ошибочка"
+    def __init__(self, *args, **kwargs):
+        super().__init__(self.detail, *args, **kwargs)
+
+
+class ObjectNotFoundException(ProxyServiceExceptions):
+    detail = "Объект не найден"
+
+
+class UserNotFoundException(ProxyServiceExceptions):
+    detail = "Пользователь не найден"
+
+
+class UserAlreadyLogInException(ProxyServiceExceptions):
+    detail = "Пользователь уже авторизован"
+
+
+class UserAlreadyExistsException(ProxyServiceExceptions):
+
+    detail = "Пользователь уже существует"
+
+class ObjectAlreadyExistsException(ProxyServiceExceptions):
+    detail = "нет "
+
+
+
+class ProxyServiceHTTPExceptions(HTTPException):
+    status_code = 404
+    detail = None
+    def __init__(self, detail: str = None, *args, **kwargs):
+        detail = detail or self.detail
+        super().__init__(status_code=self.status_code, detail=detail)
+
+class UserWithSuchEmailAlreadyExistsHTTPExceptions(ProxyServiceHTTPExceptions):
+    status_code = 409
+    detail = "Пользователь уже существует!"
+
+
+class UserNotFoundHTTPException(ProxyServiceHTTPExceptions):
+    status_code = 404
+    detail = "Пользователь не найден!"
+
+
+
+class WrongPasswordHTTPException(ProxyServiceHTTPExceptions):
+    status_code = 401
+    detail = "Пароль не верный"
+
+class UserAlreadyLogInHTTPException(ProxyServiceHTTPExceptions):
+    status_code = 400
+    detail = "Вы уже авторизованы"
+
+class UserAlreadyLogOutHTTPException(ProxyServiceHTTPExceptions):
+    status_code = 400
+    detail = "Вы уже вышли из аккаунта"

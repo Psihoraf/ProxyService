@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Response, Request, Body
 
-
-from src.exceptions import confirm_password
-from src.schemas.user import UserRegisterRequest, UserWithHashedPassword, LoginUser
+from src.api.dependencies import DBDep
+from src.exceptions import confirm_password, UserNotFoundException, UserNotFoundHTTPException, \
+    UserAlreadyLogInException, UserAlreadyLogInHTTPException, UserAlreadyLogOutHTTPException, \
+    UserAlreadyExistsException, UserWithSuchEmailAlreadyExistsHTTPExceptions
+from src.schemas.user import UserRegisterRequest, UserWithHashedPassword, LoginUser, UserInDb
 
 from src.services.auth import AuthService
 router = APIRouter(prefix="/auth", tags=["Авторизация и аутентификация"])
@@ -11,19 +13,52 @@ router = APIRouter(prefix="/auth", tags=["Авторизация и аутент
 
 
 @router.post("/register")
-async def register_user(user:UserRegisterRequest):
+async def register_user( db: DBDep, user:UserRegisterRequest = Body(openapi_examples ={
+            "1":{"summary": "User1", "value":{
+                "email":"user@example.com",
+                "password":"QQqq11**",
+                "password_confirm":"QQqq11**"
+            } },
+            "2":{"summary": "User2", "value":{
+                "title":"user2@example.com",
+                "location":"PPpp22$$",
+                "password_confirm": "PPpp22$$"
+
+            }},
+        })):
     confirm_password(user.password, user.password_confirm)
-
-    hashed_password = AuthService().hash_password(user.password)
-
-    userWithHashedPassword = UserWithHashedPassword(email=user.email,hashed_password=hashed_password)
-
-    return {"userWithHashedPassword":userWithHashedPassword}
+    try:
+        await AuthService(db).register_user(user)
+    except UserAlreadyExistsException:
+        raise UserWithSuchEmailAlreadyExistsHTTPExceptions
+    return {"user":user}
 
 @router.post("/login")
-async def login_user(user: LoginUser):
-    ...
+async def login_user(db: DBDep, response: Response, request: Request, user: LoginUser =Body(openapi_examples ={
+            "1":{"summary": "User1", "value":{
+                "email":"user@example.com",
+                "password":"QQqq11**",
+            } },
+            "2":{"summary": "User2", "value":{
+                "title":"user2@example.com",
+                "location":"PPpp22$$",
+            }},
+        })):
+    try:
+        request.cookies.get("access_token")
+        access_token = await AuthService(db).login_user(user)
+    except UserNotFoundException:
+        raise UserNotFoundHTTPException
+    except UserAlreadyLogInException:
+        raise UserAlreadyLogInHTTPException
+
+    response.set_cookie("access_token", access_token)
+    return {"email": user.email, "access_token": access_token}
 
 @router.post("/logout")
-async def logout_user(response:Response):
-    ...
+async def logout_user(response:Response, request:Request):
+
+    if not request.cookies.get("access_token"):
+        raise UserAlreadyLogOutHTTPException
+    response.delete_cookie("access_token")
+    return {"Status":"OK"}

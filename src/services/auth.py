@@ -1,16 +1,23 @@
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException
+
+
 from src.config import  settings
 import jwt
 from passlib.context import CryptContext
 
+from src.exceptions import check_password_validate, ObjectAlreadyExistsException, UserAlreadyExistsException, \
+    ObjectNotFoundException, UserNotFoundException, WrongPasswordHTTPException
+from src.schemas.user import UserRegisterRequest, UserInDb, LoginUser
+from src.services.base import BaseService
 
-class AuthService:
+
+class AuthService(BaseService):
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
     def create_access_token(self, data: dict) -> str:
         to_encode = data.copy()
-        expire = datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         to_encode |= {"exp": expire}
         encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
         return encoded_jwt
@@ -26,3 +33,25 @@ class AuthService:
             return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         except jwt.exceptions.DecodeError:
             raise HTTPException(status_code = 401, detail = "Неверный токен" )
+
+    async def register_user(self, user: UserRegisterRequest):
+        hashed_password = self.hash_password(user.password)
+
+        user_in_db = UserInDb(email=user.email, hashed_password=hashed_password)
+
+        try:
+            await self.db.users.add_user(user_in_db)
+        except ObjectAlreadyExistsException as ex:
+            raise UserAlreadyExistsException from ex
+
+        await self.db.commit()
+
+    async def login_user(self, user:LoginUser):
+        try:
+            user_with_hashed_pass = await self.db.users.get_user_with_hashed_password(user.email)
+        except ObjectNotFoundException:
+            raise UserNotFoundException
+
+        self.verify_password(user.password, user_with_hashed_pass.hashed_password)
+        access_token = self.create_access_token({"user_id":user_with_hashed_pass.id})
+        return access_token
