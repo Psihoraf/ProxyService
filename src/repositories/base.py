@@ -14,11 +14,11 @@ class BaseRepository:
     def __init__(self, session_factory):
         self.session_factory = session_factory
 
-    async def add_user(self, data: BaseModel):
+    async def add_object(self, data: BaseModel):
         try:
-            added_user = insert(self.model).values(**data.model_dump()).returning(self.model)
+            query = insert(self.model).values(**data.model_dump()).returning(self.model)
 
-            result = await self.session_factory.execute(added_user)
+            result = await self.session_factory.execute(query)
 
             result = result.scalars().one_or_none()
             return self.schema.model_validate(result)

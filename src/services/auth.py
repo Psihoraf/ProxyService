@@ -6,8 +6,8 @@ from src.config import  settings
 import jwt
 from passlib.context import CryptContext
 
-from src.exceptions import check_password_validate, ObjectAlreadyExistsException, UserAlreadyExistsException, \
-    ObjectNotFoundException, UserNotFoundException, WrongPasswordHTTPException
+from src.exceptions import  ObjectAlreadyExistsException, UserAlreadyExistsException, \
+    ObjectNotFoundException, UserNotFoundException
 from src.schemas.user import UserRegisterRequest, UserInDb, LoginUser
 from src.services.base import BaseService
 
@@ -40,7 +40,7 @@ class AuthService(BaseService):
         user_in_db = UserInDb(email=user.email, hashed_password=hashed_password)
 
         try:
-            await self.db.users.add_user(user_in_db)
+            await self.db.users.add_object(user_in_db)
         except ObjectAlreadyExistsException as ex:
             raise UserAlreadyExistsException from ex
 

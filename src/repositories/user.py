@@ -23,3 +23,13 @@ class UserRepository(BaseRepository):
         except NoResultFound:
             raise ObjectNotFoundException
         return UserWithHashedPassword.model_validate(model)
+
+    async def get_me(self, *filter, **filter_by):
+        try:
+            query = select(self.model).filter(*filter).filter_by(**filter_by)
+            result = await self.session_factory.execute(query)
+        except NoResultFound:
+            raise ObjectNotFoundException
+
+        result = result.scalars().one()
+        return self.schema.model_validate(result)

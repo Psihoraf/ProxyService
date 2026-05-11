@@ -8,9 +8,12 @@ from fastapi.openapi.docs import get_swagger_ui_html
 
 sys.path.append(str(Path(__file__).parent.parent))
 from src.api.auth import router as router_auth
+from src.api.profile import router as router_profile
+
 app = FastAPI()
 
 app.include_router(router_auth)
+app.include_router(router_profile)
 
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
