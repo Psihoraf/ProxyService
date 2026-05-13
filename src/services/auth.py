@@ -6,10 +6,11 @@ from src.config import  settings
 import jwt
 from passlib.context import CryptContext
 
-from src.exceptions import  ObjectAlreadyExistsException, UserAlreadyExistsException, \
-    ObjectNotFoundException, UserNotFoundException
+from src.exceptions import ObjectAlreadyExistsException, UserAlreadyExistsException, \
+    ObjectNotFoundException, UserNotFoundException, UserNotFoundHTTPException
 from src.schemas.user import UserRegisterRequest, UserInDb, LoginUser
 from src.services.base import BaseService
+from utils.activation_key import  key_generator
 
 
 class AuthService(BaseService):
@@ -37,14 +38,20 @@ class AuthService(BaseService):
     async def register_user(self, user: UserRegisterRequest):
         hashed_password = self.hash_password(user.password)
 
-        user_in_db = UserInDb(email=user.email, hashed_password=hashed_password)
+        key = key_generator.generate_activation_key()
 
+        user_in_db = UserInDb(
+            email=user.email,
+            hashed_password=hashed_password,
+            activation_key=key,
+        )
         try:
             await self.db.users.add_object(user_in_db)
         except ObjectAlreadyExistsException as ex:
             raise UserAlreadyExistsException from ex
 
         await self.db.commit()
+        return key
 
     async def login_user(self, user:LoginUser):
         try:
@@ -55,3 +62,10 @@ class AuthService(BaseService):
         self.verify_password(user.password, user_with_hashed_pass.hashed_password)
         access_token = self.create_access_token({"user_id":user_with_hashed_pass.id})
         return access_token
+
+    async def get_me(self, user_id: int):
+        try:
+            me = await self.db.users.get_me(id=user_id)
+            return me
+        except ObjectNotFoundException:
+            raise UserNotFoundHTTPException

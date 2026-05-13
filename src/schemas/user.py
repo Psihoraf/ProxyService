@@ -24,6 +24,7 @@ class UserResponse(User):
 class UserInDb(User):
     hashed_password: str
 
+
 class LoginUser(BaseModel):
     email: EmailStr
     password: str
