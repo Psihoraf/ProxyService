@@ -33,3 +33,5 @@ class UserRepository(BaseRepository):
 
         result = result.scalars().one()
         return self.schema.model_validate(result)
+
+

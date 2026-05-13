@@ -33,5 +33,16 @@ class UserRegisterRequest(UserBase):
     password: str
     password_confirm: str
 
+class PatchUserPassword(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    password: str | None = None
+    password_confirm: str | None = None
+
+class PatchUserKey(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    activation_key: str | None = None
+    updated_at: datetime | None = None
+
 
 

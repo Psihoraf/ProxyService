@@ -39,17 +39,17 @@ async def register_user( db: DBDep, user:UserRegisterRequest = Body(openapi_exam
         )
     except UserAlreadyExistsException:
         raise UserWithSuchEmailAlreadyExistsHTTPExceptions
-    return {"user":user}
+    return f"Письмо с ключом активации отвправлено на почту {user.email}"
 
 @router.post("/login")
 async def login_user(db: DBDep, response: Response, request: Request, user: LoginUser =Body(openapi_examples ={
             "1":{"summary": "User1", "value":{
-                "email":"user@example.com",
-                "password":"QQqq11**",
+                "email":"narek77-00@mail.ru",
+                "password":"PPpp22$$",
             } },
             "2":{"summary": "User2", "value":{
-                "title":"user2@example.com",
-                "location":"PPpp22$$",
+                "email":"artaches1@mail.ru",
+                "password":"PPpp22$$",
             }},
         })):
     try:
@@ -77,3 +77,10 @@ async def get_me(user_id:UserIdDep, db:DBDep):
     me = await AuthService(db).get_me(user_id)
 
     return me
+
+@router.patch("/login/profile/refresh_key")
+async def refresh(user_id:UserIdDep, db:DBDep):
+
+    user = await AuthService(db).refresh_key(user_id, True)
+    send_email_with_activation_key.delay(email=user.email, activation_key=user.activation_key)
+    return f"новый ключ отправлен на почту"

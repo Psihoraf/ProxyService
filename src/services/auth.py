@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException
 
-
+from schemas.user import PatchUserKey
 from src.config import  settings
 import jwt
 from passlib.context import CryptContext
@@ -39,11 +39,12 @@ class AuthService(BaseService):
         hashed_password = self.hash_password(user.password)
 
         key = key_generator.generate_activation_key()
-
+        created_at = datetime.now()
         user_in_db = UserInDb(
             email=user.email,
             hashed_password=hashed_password,
             activation_key=key,
+            created_at=created_at
         )
         try:
             await self.db.users.add_object(user_in_db)
@@ -69,3 +70,15 @@ class AuthService(BaseService):
             return me
         except ObjectNotFoundException:
             raise UserNotFoundHTTPException
+
+    async def refresh_key(self, id: int, isPatch: bool):
+        key = key_generator.generate_activation_key()
+        updated_at = datetime.now()
+        data = PatchUserKey(activation_key=key, updated_at=updated_at)
+
+
+        user = await self.db.users.edit(data, isPatch, id=id)
+
+        await self.db.commit()
+        return user
+
