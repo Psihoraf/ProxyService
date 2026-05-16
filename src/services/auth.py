@@ -1,13 +1,13 @@
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException
 
-from schemas.user import PatchUserKey
+from schemas.user import PatchUserKey, PatchUserPassword
 from src.config import  settings
 import jwt
 from passlib.context import CryptContext
 
 from src.exceptions import ObjectAlreadyExistsException, UserAlreadyExistsException, \
-    ObjectNotFoundException, UserNotFoundException, UserNotFoundHTTPException
+    ObjectNotFoundException, UserNotFoundException, UserNotFoundHTTPException, WrongPasswordHTTPException
 from src.schemas.user import UserRegisterRequest, UserInDb, LoginUser
 from src.services.base import BaseService
 from utils.activation_key import  key_generator
@@ -27,7 +27,11 @@ class AuthService(BaseService):
         return self.pwd_context.hash(password)
 
     def verify_password(self, plain_password, hashed_password):
-        return self.pwd_context.verify(plain_password, hashed_password)
+
+        ver_password = self.pwd_context.verify(plain_password, hashed_password)
+        if not ver_password:
+            raise WrongPasswordHTTPException
+        return ver_password
 
     def decode_token(self, token:str) -> dict:
         try:
@@ -43,6 +47,7 @@ class AuthService(BaseService):
         user_in_db = UserInDb(
             email=user.email,
             hashed_password=hashed_password,
+            is_active=True,
             activation_key=key,
             created_at=created_at
         )
@@ -56,7 +61,7 @@ class AuthService(BaseService):
 
     async def login_user(self, user:LoginUser):
         try:
-            user_with_hashed_pass = await self.db.users.get_user_with_hashed_password(user.email)
+            user_with_hashed_pass = await self.db.users.get_user_with_hashed_password(email = user.email)
         except ObjectNotFoundException:
             raise UserNotFoundException
 
@@ -82,3 +87,18 @@ class AuthService(BaseService):
         await self.db.commit()
         return user
 
+    async def change_password(self, old_password:str, new_password:str, user_id:int):
+
+
+        try:
+            user_with_hashed_pass = await self.db.users.get_user_with_hashed_password(id = user_id)
+        except ObjectNotFoundException:
+            raise UserNotFoundException
+
+
+        self.verify_password(old_password, user_with_hashed_pass.hashed_password)
+
+        new_hashed_password = self.hash_password(new_password)
+        data = PatchUserPassword(hashed_password = new_hashed_password)
+        await self.db.users.edit(data, True, id=user_id)
+        await self.db.commit()

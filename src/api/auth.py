@@ -4,7 +4,7 @@ from src.api.dependencies import DBDep, UserIdDep
 from src.exceptions import confirm_password, UserNotFoundException, UserNotFoundHTTPException, \
     UserAlreadyLogInException, UserAlreadyLogInHTTPException, UserAlreadyLogOutHTTPException, \
     UserAlreadyExistsException, UserWithSuchEmailAlreadyExistsHTTPExceptions
-from src.schemas.user import UserRegisterRequest, UserWithHashedPassword, LoginUser, UserInDb
+from src.schemas.user import UserRegisterRequest, UserWithHashedPassword, LoginUser, UserInDb, UserChangePasswordRequest
 
 from src.services.auth import AuthService
 from src.tasks.tasks import send_email_with_activation_key
@@ -84,3 +84,10 @@ async def refresh(user_id:UserIdDep, db:DBDep):
     user = await AuthService(db).refresh_key(user_id, True)
     send_email_with_activation_key.delay(email=user.email, activation_key=user.activation_key)
     return f"новый ключ отправлен на почту"
+
+@router.patch("/login/profile/password")
+async def change_password(data: UserChangePasswordRequest, user_id:UserIdDep,  db:DBDep):
+    confirm_password(data.new_password, data.new_password_confirm)
+
+    await AuthService(db).change_password(data.old_password, data.new_password, user_id)
+    return "Пароль успешно изменен"

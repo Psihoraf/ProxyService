@@ -33,10 +33,14 @@ class UserRegisterRequest(UserBase):
     password: str
     password_confirm: str
 
+class UserChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+    new_password_confirm: str
+
 class PatchUserPassword(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    password: str | None = None
-    password_confirm: str | None = None
+    hashed_password: str
 
 class PatchUserKey(BaseModel):
     model_config = ConfigDict(from_attributes=True)
